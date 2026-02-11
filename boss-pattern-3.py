@@ -17,10 +17,10 @@ INVULN_TIME = 1.5
 KNOCKBACK_FORCE = 600
 
 # Sword
-SWORD_RANGE = 50
+SWORD_RANGE = 43
 SWORD_ARC_DEG = 180
-SWORD_TIME = 0.22
-SWORD_AFTERIMAGE_TIME = 0.05
+SWORD_TIME = 0.20
+SWORD_AFTERIMAGE_TIME = 0.03
 
 # ---------------- BOSS ----------------
 BOSS_SIZE = 28
@@ -301,14 +301,16 @@ while running:
     if not game_over:
 
         # ---------------- PLAYER MOVEMENT ----------------
-        move = pygame.Vector2(
-            keys[pygame.K_d] - keys[pygame.K_a],
-            keys[pygame.K_s] - keys[pygame.K_w],
-        )
+        if not state["sword_active"]:  # <-- movement lock during attack
+            move = pygame.Vector2(
+                keys[pygame.K_d] - keys[pygame.K_a],
+                keys[pygame.K_s] - keys[pygame.K_w],
+            )
 
-        if move.length():
-            state["facing"] = move.normalize()
-            state["player_pos"] += state["facing"] * PLAYER_SPEED * dt
+            if move.length():
+                state["facing"] = move.normalize()
+                state["player_pos"] += state["facing"] * PLAYER_SPEED * dt
+
 
         state["player_pos"] += state["player_vel"] * dt
         state["player_vel"] *= 0.85

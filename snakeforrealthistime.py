@@ -1042,33 +1042,84 @@ def main():
     print(f"==========================")
 
     # ============================================================================
-    # STEP 4: Create the movement path
+    # STEP 4: Create the movement path with multiple waypoints!
     # ============================================================================
-    # The snake boss follows a wavy sine path back and forth between two points
-    # Think of it like a train going back and forth on wavy tracks!
+    # 🎯 EASY CONFIGURATION: Add or remove waypoints here!
+    # The snake will travel through all waypoints in order, then loop back
+    # ============================================================================
 
-    # Define the two endpoints of the path
-    node_a = (100, 500)   # Start point (x=100, y=500) - left side
-    node_b = (700, 100)   # End point (x=700, y=100) - upper right
+    # ========================================================================
+    # PATH WAYPOINTS - Add as many as you want!
+    # ========================================================================
+    # Each waypoint is an (x, y) coordinate in pixels
+    # The snake will travel: waypoint[0] → [1] → [2] → ... → [0] (loop)
+    #
+    # TIPS:
+    # - Keep points within window bounds (0-1200 for both x and y)
+    # - More waypoints = more complex path
+    # - Spread them out for interesting movement
+    # - You can have 2, 3, 4, 10, 20+ waypoints!
 
-    # Create the forward path (A → B) with a wavy pattern
-    sine_forward = generate_sine_edge(
-        node_a,           # Starting position
-        node_b,           # Ending position
-        samples=50,       # How many points along the path (more = smoother)
-        amplitude=10,     # How "tall" the waves are
-        cycles=6          # How many complete waves from start to end
-    )
-    # This returns a list of (x, y) coordinates: [(x0,y0), (x1,y1), (x2,y2), ...]
+    waypoints = [
+        (100, 500),    # Waypoint 0: Left-middle area
+        (700, 100),    # Waypoint 1: Upper-right area
+        (1000, 800),   # Waypoint 2: Lower-right area (ADD MORE LIKE THIS!)
+        (400, 900),    # Waypoint 3: Bottom-center area
+        # (200, 200), # Waypoint 4: Uncomment to add another!
+        # (600, 600), # Waypoint 5: Add as many as you want!
+    ]
 
-    # Create the backward path (B → A) with waves going the opposite direction
-    sine_backward = generate_sine_edge(
-        node_b,           # Start from B this time
-        node_a,           # Go back to A
-        samples=50,       # Same smoothness
-        amplitude=-10,    # Negative amplitude = waves flip upside down!
-        cycles=6          # Same number of waves
-    )
+    # Validate waypoints
+    if len(waypoints) < 2:
+        print("ERROR: Need at least 2 waypoints!")
+        pygame.quit()
+        sys.exit(1)
+
+    print(f"=== Path Configuration ===")
+    print(f"Number of waypoints: {len(waypoints)}")
+    print(f"Path segments: {len(waypoints)}")
+
+    # ========================================================================
+    # PATH GENERATION SETTINGS (apply to all segments)
+    # ========================================================================
+    # These control how the path looks between each pair of waypoints
+
+    PATH_SAMPLES = 50      # How smooth the path is (more = smoother)
+    PATH_AMPLITUDE = 10    # How wavy the path is (higher = more wiggly)
+    PATH_CYCLES = 6        # How many waves between waypoints
+    PATH_SPEED = 400       # How fast the boss moves (pixels/second)
+
+    # ========================================================================
+    # Generate paths between all consecutive waypoints
+    # ========================================================================
+    # This creates a path segment between each pair of points
+    # Example with 4 waypoints: [0→1, 1→2, 2→3, 3→0]
+
+    all_paths = []  # Will store all the path segments
+
+    for i in range(len(waypoints)):
+        # Get current waypoint and next waypoint (wraps around at end)
+        start_point = waypoints[i]
+        end_point = waypoints[(i + 1) % len(waypoints)]
+        # The % (modulo) operator makes it wrap: if i=3 and len=4, then (3+1)%4 = 0
+        # This creates a loop: last waypoint connects back to first!
+
+        # Generate wavy path between these two points
+        path_segment = generate_sine_edge(
+            start_point,
+            end_point,
+            samples=PATH_SAMPLES,
+            amplitude=PATH_AMPLITUDE if i % 2 == 0 else -PATH_AMPLITUDE,
+            # Alternate wave direction each segment for visual variety!
+            # Even segments (0,2,4...): positive amplitude
+            # Odd segments (1,3,5...): negative amplitude (flipped waves)
+            cycles=PATH_CYCLES
+        )
+
+        all_paths.append(path_segment)
+        print(f"  Path {i}: {start_point} → {end_point}")
+
+    print(f"=========================")
 
     # ============================================================================
     # STEP 5: Create game objects
@@ -1076,11 +1127,11 @@ def main():
     # Now we create instances (objects) from our classes!
     # Remember: Classes are blueprints, objects are the actual things we build
 
-    # Create a CurveFollower object that will move along the forward path
-    boss_path = CurveFollower(sine_forward, speed=400)
-    # This creates a "train" that follows the "tracks" at 400 pixels/second
+    # Start with the first path segment
+    boss_path = CurveFollower(all_paths[0], speed=PATH_SPEED)
+    # This creates a "train" that follows the first "track"
 
-    current_path = "forward"  # Track which direction we're going
+    current_path_index = 0  # Track which path segment we're on (0, 1, 2, ...)
 
     # Create the ElasticChain object (the snake boss!)
     chain = ElasticChain(boss_path.pos)
@@ -1120,19 +1171,28 @@ def main():
         # This moves the "anchor point" that the snake's tail follows
 
         # ========================================================================
-        # 6D: Check if we reached the end of path - if so, switch directions!
+        # 6D: Check if we reached end of current path segment - advance to next!
         # ========================================================================
         if boss_path.index >= len(boss_path.points) - 1:
-            # We've reached the last point in the current path
-            if current_path == "forward":
-                # We just finished going A → B, now go back B → A
-                boss_path = CurveFollower(sine_backward, speed=1500)  # Faster return!
-                current_path = "backward"
-            else:
-                # We just finished going B → A, now go forward A → B again
-                boss_path = CurveFollower(sine_forward, speed=300)  # Slower forward
-                current_path = "forward"
-            # This creates a continuous back-and-forth motion!
+            # We've reached the last point in the current path segment
+            # Time to move to the next waypoint!
+
+            # Move to next path segment (wraps around to create a loop)
+            current_path_index = (current_path_index + 1) % len(all_paths)
+            # Example with 4 paths: 0→1→2→3→0→1→2→3→0... (infinite loop!)
+
+            # Create a new path follower for the next segment
+            boss_path = CurveFollower(all_paths[current_path_index], speed=PATH_SPEED)
+
+            # Optional: Vary speed on different segments for interesting behavior
+            # Uncomment to make alternate segments faster/slower:
+            # if current_path_index % 2 == 0:
+            #     boss_path.speed = PATH_SPEED * 1.5  # 50% faster
+            # else:
+            #     boss_path.speed = PATH_SPEED * 0.75  # 25% slower
+
+            print(f"Switching to path segment {current_path_index}")
+            # This creates continuous movement through all waypoints!
 
         # ========================================================================
         # 6E: Update the snake physics
@@ -1152,15 +1212,20 @@ def main():
         # ========================================================================
         # 6G: Draw the path visualization (optional - helps see the path)
         # ========================================================================
-        # Draw dots to show where the path goes
+        # Draw dots to show waypoints and path preview
 
-        # Draw endpoint markers (currently invisible with radius 0)
-        pygame.draw.circle(screen, PLAYER_COLOR, node_a, 0)
-        pygame.draw.circle(screen, PLAYER_COLOR, node_b, 0)
+        # Draw all waypoints as small circles
+        for i, waypoint in enumerate(waypoints):
+            # Draw waypoint marker
+            pygame.draw.circle(screen, PLAYER_COLOR, waypoint, 8)
+            # Draw waypoint number (optional - helps identify waypoints)
+            # You could add text rendering here if you import pygame.font
 
-        # Draw sample points along the path (every 10th point)
-        for p in sine_forward[::10]:  # [::10] means "every 10th element"
-            pygame.draw.circle(screen, (80, 80, 120), (int(p[0]), int(p[1])), 0)
+        # Draw sample points along ALL path segments (every 10th point)
+        for path_segment in all_paths:
+            for p in path_segment[::10]:  # [::10] means "every 10th element"
+                pygame.draw.circle(screen, (80, 80, 120), (int(p[0]), int(p[1])), 2)
+                # This creates a visual preview of the entire path loop!
 
         # ========================================================================
         # 6H: Draw the snake boss

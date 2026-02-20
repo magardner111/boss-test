@@ -74,14 +74,29 @@ The boss has 3 automatic states:
 2. **Expanded** (10-20 seconds): Snake stretches out
 3. **Rigid** (20+ seconds): Snake becomes stiff
 
-### Path Following
-The snake follows a sine wave path between two points:
+### Path Following (Multi-Waypoint System!)
+The snake follows a wavy path through multiple waypoints:
 ```python
-node_a = (100, 500)   # Start position (x, y)
-node_b = (700, 100)   # End position (x, y)
+waypoints = [
+    (100, 500),    # Waypoint 0: Left-middle
+    (700, 100),    # Waypoint 1: Upper-right
+    (1000, 800),   # Waypoint 2: Lower-right
+    (400, 900),    # Waypoint 3: Bottom-center
+]
 ```
 
-Change these coordinates to move the path around!
+**How to add more waypoints:**
+1. Just add more `(x, y)` coordinates to the list!
+2. Snake travels: 0 → 1 → 2 → 3 → 0 (loops forever)
+3. Minimum 2 waypoints, no maximum!
+
+**Path settings:**
+```python
+PATH_SAMPLES = 50      # Smoothness (higher = smoother)
+PATH_AMPLITUDE = 10    # Waviness (higher = more wiggly)
+PATH_CYCLES = 6        # Number of waves per segment
+PATH_SPEED = 400       # Movement speed (pixels/second)
+```
 
 ---
 
@@ -107,6 +122,62 @@ NUM_NODES = 30
 HEAD_MASS = 10.0
 TAIL_MASS = 0.5  # Very light tail!
 ```
+
+---
+
+## Path Configuration Examples
+
+### Simple Circle (4 waypoints)
+```python
+waypoints = [
+    (300, 300),   # Top-left
+    (900, 300),   # Top-right
+    (900, 900),   # Bottom-right
+    (300, 900),   # Bottom-left
+]
+```
+
+### Zigzag Pattern (5 waypoints)
+```python
+waypoints = [
+    (100, 200),
+    (1100, 400),
+    (100, 600),
+    (1100, 800),
+    (100, 1000),
+]
+```
+
+### Star Pattern (5 waypoints)
+```python
+waypoints = [
+    (600, 100),    # Top point
+    (900, 900),    # Bottom-right
+    (200, 400),    # Left
+    (1000, 400),   # Right
+    (300, 900),    # Bottom-left
+]
+```
+
+### Complex Tour (8 waypoints)
+```python
+waypoints = [
+    (200, 200),
+    (1000, 200),
+    (1000, 500),
+    (600, 600),
+    (1000, 800),
+    (600, 1000),
+    (200, 800),
+    (200, 500),
+]
+```
+
+**Tips for designing paths:**
+- Spread waypoints evenly for smooth motion
+- Use 4-8 waypoints for interesting patterns
+- Keep within window bounds (0-1200)
+- Test different amplitudes and speeds!
 
 ---
 
